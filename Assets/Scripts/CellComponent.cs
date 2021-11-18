@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
+
 [Serializable]
 public struct CellComponent : IComponentData
 {
@@ -22,4 +23,7 @@ public struct CellComponent : IComponentData
     public bool Alive;
     public int x;
     public int y;
+    public bool toggleState;
+    public int count;
 }
+

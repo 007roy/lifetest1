@@ -6,9 +6,9 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using System.Collections.Generic;
 
+
 public class LifeSystem : SystemBase
 {
-    static public bool[] pattern;
     protected override void OnCreate()
     {
     }
@@ -18,10 +18,15 @@ public class LifeSystem : SystemBase
         Entities.ForEach((ref CellComponent cell) =>
         {
             cell.Alive = rnd.NextInt(100) > 50;
-        }).Run();
+        }).WithoutBurst().Run();
     }
+    
     protected override void OnUpdate()
     {
 
+        Entities.ForEach((ref CellComponent cell) =>
+        {
+
+        }).Schedule();
     }
 }

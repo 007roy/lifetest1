@@ -45,3 +45,11 @@ The following packages were added:
   com.unity.timeline@1.6.2
   com.unity.ugui@1.0.0
   com.unity.visualscripting@1.7.5
+
+=== Thu Nov 18 21:31:19 2021
+
+Packages were changed.
+Update Mode: updateDependencies
+
+The following packages were updated:
+  com.unity.collab-proxy from version 1.13.5 to 1.15.1

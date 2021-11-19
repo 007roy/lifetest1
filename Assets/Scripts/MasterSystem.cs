@@ -47,7 +47,7 @@ public class MasterSystem : SystemBase
                 CellComponent cellComponent = new CellComponent { x = x, y = y, Alive = false, toggleState = false};
                 Cells[x, y] = cellComponent;
                 entityManager.AddComponentData(newCell, cellComponent);
-                entityManager.SetComponentData(newCell, new PhysicsCollider { Value = Collider});
+                entityManager.SetComponentData(newCell, new PhysicsCollider {});
                 //entityManager.AddBuffer<EntityRef>(newCell);
             }
         /*

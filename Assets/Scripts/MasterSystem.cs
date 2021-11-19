@@ -15,8 +15,8 @@ public struct EntityRef : IBufferElementData
 }
 public class MasterSystem : SystemBase
 {
-    static public int BoardSizeX = 100;
-    static public int BoardSizeY = 100;
+    static public int BoardSizeX = 10;
+    static public int BoardSizeY = 10;
     private EntityManager entityManager;
     private CellComponent[,] Cells = new CellComponent[BoardSizeX,BoardSizeY];
     protected override void OnCreate()
@@ -47,7 +47,16 @@ public class MasterSystem : SystemBase
                 CellComponent cellComponent = new CellComponent { x = x, y = y, Alive = false, toggleState = false};
                 Cells[x, y] = cellComponent;
                 entityManager.AddComponentData(newCell, cellComponent);
-                entityManager.SetComponentData(newCell, new PhysicsCollider {});
+
+                BlobAssetReference<Unity.Physics.Collider> boxCollider = Unity.Physics.BoxCollider.Create(new BoxGeometry
+                {
+                    Center = float3.zero,
+                    BevelRadius = 0f,
+                    Orientation = quaternion.identity,
+                    Size = new float3(1, 1, 1)
+                });
+                
+                entityManager.AddComponentData(newCell, new PhysicsCollider {Value = boxCollider });
                 //entityManager.AddBuffer<EntityRef>(newCell);
             }
         /*

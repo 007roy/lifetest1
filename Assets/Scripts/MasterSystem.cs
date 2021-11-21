@@ -15,8 +15,8 @@ public struct EntityRef : IBufferElementData
 }
 public class MasterSystem : SystemBase
 {
-    static public int BoardSizeX = 10;
-    static public int BoardSizeY = 10;
+    static public int BoardSizeX = 100;
+    static public int BoardSizeY = 100;
     private EntityManager entityManager;
     private CellComponent[,] Cells = new CellComponent[BoardSizeX,BoardSizeY];
     protected override void OnCreate()
@@ -44,42 +44,29 @@ public class MasterSystem : SystemBase
                     mesh = cellMesh,
                     material = cellMaterial
                 });
-                CellComponent cellComponent = new CellComponent { x = x, y = y, Alive = false, toggleState = false};
+                CellComponent cellComponent = new CellComponent 
+                { 
+                    x = x, 
+                    y = y, 
+                    Alive = false, 
+                    toggleState = false,
+                    count = 0
+                };
                 Cells[x, y] = cellComponent;
                 entityManager.AddComponentData(newCell, cellComponent);
 
                 BlobAssetReference<Unity.Physics.Collider> boxCollider = Unity.Physics.BoxCollider.Create(new BoxGeometry
                 {
-                    Center = float3.zero,
+                    Center = cellMesh.bounds.center,
                     BevelRadius = 0f,
                     Orientation = quaternion.identity,
-                    Size = new float3(1, 1, 1)
+                    Size = cellMesh.bounds.extents*2.0f
                 });
                 
                 entityManager.AddComponentData(newCell, new PhysicsCollider {Value = boxCollider });
                 //entityManager.AddBuffer<EntityRef>(newCell);
             }
-        /*
-        Entities.ForEach((ref CellComponent cell) =>
-        {
-            
-            using BlobBuilder bb = new BlobBuilder(Allocator.Temp);
-            ref var neighboorCellAsset = ref bb.ConstructRoot<CellComponent>();
-            var neighboorArrayBuilder = bb.Allocate(ref neighboorCellAsset.neighboors, 8);
-            CellComponent[] nc = new CellComponent[8];
-            int index = 0;
-                var entity = Cells[cell.x, cell.y];
-            for (int i = cell.x - 1; i <= cell.x + 1; i++)
-                for (int j = cell.y - 1; j <= cell.y + 1; j++)
-                {
-                    if (i < 0 || j < 0) continue;
-                    if (i >= MasterSystem.BoardSizeX || j >= MasterSystem.BoardSizeY) continue;
-                    if (i == cell.x && j == cell.y) continue;
-                    nc[index] = Cells[i, j];
-                }
-            bb.Construct<CellComponent>(ref cell.neighboors, nc);
-        }).WithoutBurst().Run();
-          */ 
+
     }
 
     protected override void OnUpdate()

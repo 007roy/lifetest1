@@ -19,6 +19,7 @@ public class MasterSystem : SystemBase
     static public int BoardSizeY = 100;
     private EntityManager entityManager;
     private CellComponent[,] Cells = new CellComponent[BoardSizeX,BoardSizeY];
+
     protected override void OnCreate()
     {
         entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -31,12 +32,12 @@ public class MasterSystem : SystemBase
             typeof(CellComponent),
             typeof(PhysicsCollider));
         Mesh cellMesh = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
-        UnityEngine.Material cellMaterial = Resources.Load<UnityEngine.Material>("BasicBlue");
+        UnityEngine.Material cellMaterial = Resources.Load<UnityEngine.Material>("SomeColor");
+
         for (int x = 0; x < BoardSizeX; x++)
             for(int y=0; y < BoardSizeY; y++)
             {
                 Entity newCell = entityManager.CreateEntity(archetype);
-                //entityManager.AddComponentData(newCell, new Translation { Value = new float3(x*1.5f,y*1.5f,0f)});
                /// entityManager.AddComponentData(newCell, new Rotation { Value =  quaternion.EulerXYZ(new float3(0f,0f,0f))});
                 entityManager.AddSharedComponentData(newCell, new RenderMesh
                 {
@@ -68,13 +69,15 @@ public class MasterSystem : SystemBase
 
     protected override void OnUpdate()
     {
+        //Check all the cells for dead and move out of render range
+        //TODO try pooling to bulk enable disable?
         Entities.ForEach((ref Translation translation, in CellComponent cell) => {
             if (cell.Alive)
             {
                 translation.Value = new float3(cell.x * 1.5f, cell.y * 1.5f, 0f);
                 return;
             }
-            translation.Value = new float3(-10000, -10000, -10000);  //move out of render range
+            translation.Value = new float3(-10000, -10000, -10000);
         }).Schedule();
     }
 }

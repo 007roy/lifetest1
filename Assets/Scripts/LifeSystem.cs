@@ -8,31 +8,31 @@ using System.Collections.Generic;
 using Unity.Physics;
 using UnityEngine;
 using Unity.Physics.Systems;
+using TMPro;
 
 public class LifeSystem : SystemBase
 {
+    
     public int generation;
-  //  BuildPhysicsWorld buildPhysicsWorld;
     ExportPhysicsWorld exportPhysicsWorld;
-  //  EndFramePhysicsSystem endFramePhysics;
 
     private EntityQuery cellComponentQuery;
 
-protected override void OnCreate()
+    protected override void OnCreate()
     {
         generation = 0;
-    //    buildPhysicsWorld = World.DefaultGameObjectInjectionWorld.GetExistingSystem<BuildPhysicsWorld>();
-        
+
         exportPhysicsWorld = World.GetOrCreateSystem<ExportPhysicsWorld>();
-     //   endFramePhysics = World.GetOrCreateSystem<EndFramePhysicsSystem>();
         var q = new EntityQueryDesc()
         {
             All = new ComponentType[] { ComponentType.ReadWrite<CellComponent>() }
         };
         cellComponentQuery = this.GetEntityQuery(q);
     }
+
     protected override void OnStartRunning()
     {
+        //Make random selection alive
         Unity.Mathematics.Random rnd = new Unity.Mathematics.Random(1211);
         Entities.ForEach((ref CellComponent cell) =>
         {
@@ -40,31 +40,37 @@ protected override void OnCreate()
         }).WithoutBurst().Run();
     }
 
- 
+
     protected override void OnUpdate()
     {
+        //setup and and start raycast neighboor check
         ref PhysicsWorld pw = ref World.DefaultGameObjectInjectionWorld.GetExistingSystem<BuildPhysicsWorld>().PhysicsWorld;
         var updateRayCastJob = new RayCastJob()
         {
             cellComponentHandle = this.GetComponentTypeHandle<CellComponent>(false),
             world = pw
         };
-        this.Dependency = JobHandle.CombineDependencies(this.Dependency, exportPhysicsWorld.GetOutputDependency());
-        this.Dependency = updateRayCastJob.ScheduleParallel(cellComponentQuery, 32, this.Dependency);
-        
-        
+        this.Dependency = JobHandle.CombineDependencies(this.Dependency, exportPhysicsWorld.GetOutputDependency());   //run after this frames physics has been calculated
+        this.Dependency = updateRayCastJob.ScheduleParallel(cellComponentQuery, 32, this.Dependency);   //how many cells to check at once, TODO find optimum number
+
+
         generation++;
-        if (generation < 2) return;
+        GenerationDisplay.singleton.onCounterUpdate.Invoke(generation);
+
+        if (generation < 2) return; //dont apply rules till after first 2 rounds TODO this is wonky figure out why
 
         var applyRulesJob = new ApplyRulesJob()
         {
             cellComponentHandle = this.GetComponentTypeHandle<CellComponent>(false)
         };
         applyRulesJob.ScheduleParallel(cellComponentQuery, 32, this.Dependency).Complete();
+
     }
 
 
 }
+
+//Job to check neighboor count and apply life rules
 public struct ApplyRulesJob : IJobEntityBatch
 {
     public ComponentTypeHandle<CellComponent> cellComponentHandle;
@@ -88,6 +94,8 @@ public struct ApplyRulesJob : IJobEntityBatch
         }
     }
 }
+
+//Job that raycasts to count neighboors
 public struct RayCastJob : IJobEntityBatch
 {
     public ComponentTypeHandle<CellComponent> cellComponentHandle;

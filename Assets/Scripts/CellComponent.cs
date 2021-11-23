@@ -23,7 +23,6 @@ public struct CellComponent : IComponentData
     public bool Alive;
     public int x;
     public int y;
-    public bool toggleState;
     public int count;
 }
 

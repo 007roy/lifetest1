@@ -12,19 +12,19 @@ using Unity.Physics.Systems;
 public class LifeSystem : SystemBase
 {
     public int generation;
-    BuildPhysicsWorld buildPhysicsWorld;
+  //  BuildPhysicsWorld buildPhysicsWorld;
     ExportPhysicsWorld exportPhysicsWorld;
-    EndFramePhysicsSystem endFramePhysics;
+  //  EndFramePhysicsSystem endFramePhysics;
 
     private EntityQuery cellComponentQuery;
 
 protected override void OnCreate()
     {
         generation = 0;
-        buildPhysicsWorld = World.DefaultGameObjectInjectionWorld.GetExistingSystem<BuildPhysicsWorld>();
+    //    buildPhysicsWorld = World.DefaultGameObjectInjectionWorld.GetExistingSystem<BuildPhysicsWorld>();
         
         exportPhysicsWorld = World.GetOrCreateSystem<ExportPhysicsWorld>();
-        endFramePhysics = World.GetOrCreateSystem<EndFramePhysicsSystem>();
+     //   endFramePhysics = World.GetOrCreateSystem<EndFramePhysicsSystem>();
         var q = new EntityQueryDesc()
         {
             All = new ComponentType[] { ComponentType.ReadWrite<CellComponent>() }
@@ -55,14 +55,12 @@ protected override void OnCreate()
         
         generation++;
         if (generation < 2) return;
-        // Debug.Log("Generation: " + generation);
 
         var applyRulesJob = new ApplyRulesJob()
         {
             cellComponentHandle = this.GetComponentTypeHandle<CellComponent>(false)
         };
         applyRulesJob.ScheduleParallel(cellComponentQuery, 32, this.Dependency).Complete();
-        //endFramePhysics.AddInputDependency(this.Dependency);
     }
 
 
@@ -112,7 +110,7 @@ public struct RayCastJob : IJobEntityBatch
                         Start = start,
                         End = end,
                         Filter = CollisionFilter.Default
-                    },out Unity.Physics.RaycastHit closestHit);
+                    });
                     if (hit) count++;
                 }
             cellComponents[index] = new CellComponent()

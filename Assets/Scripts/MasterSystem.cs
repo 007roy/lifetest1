@@ -24,7 +24,7 @@ public class MasterSystem : SystemBase
         entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
         EntityArchetype archetype = entityManager.CreateArchetype(
             typeof(Translation),
-            typeof(Rotation),
+            //typeof(Rotation),
             typeof(RenderMesh),
             typeof(RenderBounds),
             typeof(LocalToWorld),
@@ -37,8 +37,7 @@ public class MasterSystem : SystemBase
             {
                 Entity newCell = entityManager.CreateEntity(archetype);
                 //entityManager.AddComponentData(newCell, new Translation { Value = new float3(x*1.5f,y*1.5f,0f)});
-                entityManager.AddComponentData(newCell, new Rotation { Value =
-                    quaternion.EulerXYZ(new float3(0f,0f,0f))});
+               /// entityManager.AddComponentData(newCell, new Rotation { Value =  quaternion.EulerXYZ(new float3(0f,0f,0f))});
                 entityManager.AddSharedComponentData(newCell, new RenderMesh
                 {
                     mesh = cellMesh,
@@ -49,7 +48,6 @@ public class MasterSystem : SystemBase
                     x = x, 
                     y = y, 
                     Alive = false, 
-                    toggleState = false,
                     count = 0
                 };
                 Cells[x, y] = cellComponent;
@@ -64,7 +62,6 @@ public class MasterSystem : SystemBase
                 });
                 
                 entityManager.AddComponentData(newCell, new PhysicsCollider {Value = boxCollider });
-                //entityManager.AddBuffer<EntityRef>(newCell);
             }
 
     }
@@ -77,7 +74,7 @@ public class MasterSystem : SystemBase
                 translation.Value = new float3(cell.x * 1.5f, cell.y * 1.5f, 0f);
                 return;
             }
-            translation.Value = new float3(-10000, -10000, -10000);  
+            translation.Value = new float3(-10000, -10000, -10000);  //move out of render range
         }).Schedule();
     }
 }

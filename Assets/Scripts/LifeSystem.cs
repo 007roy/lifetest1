@@ -12,7 +12,7 @@ using TMPro;
 
 public class LifeSystem : SystemBase
 {
-    
+
     public int generation;
     ExportPhysicsWorld exportPhysicsWorld;
 
@@ -45,13 +45,41 @@ public class LifeSystem : SystemBase
     {
         //setup and and start raycast neighboor check
         ref PhysicsWorld pw = ref World.DefaultGameObjectInjectionWorld.GetExistingSystem<BuildPhysicsWorld>().PhysicsWorld;
-        var updateRayCastJob = new RayCastJob()
+        /*        var updateJob = new RayCastJob()
+                {
+                    cellComponentHandle = this.GetComponentTypeHandle<CellComponent>(false),
+                    world = pw
+                };
+        */
+        var bsx = MasterSystem.BoardSizeX;
+        var bsy = MasterSystem.BoardSizeY;
+        EntityManager entityManager = EntityManager;
+        ComponentDataFromEntity<CellComponent> allCellComps = GetComponentDataFromEntity<CellComponent>(true);
+        var b = MasterSystem.neighboors;
+        Entities.WithReadOnly(allCellComps).WithReadOnly(b).ForEach((ref CellComponent cell) =>
         {
-            cellComponentHandle = this.GetComponentTypeHandle<CellComponent>(false),
-            world = pw
-        };
-        this.Dependency = JobHandle.CombineDependencies(this.Dependency, exportPhysicsWorld.GetOutputDependency());   //run after this frames physics has been calculated
-        this.Dependency = updateRayCastJob.ScheduleParallel(cellComponentQuery, 32, this.Dependency);   //how many cells to check at once, TODO find optimum number
+            int count = 0;
+
+            for (int j = -1; j <= 1; j++)
+                for (int i = -1; i <= 1; i++)
+                {
+                    if (i == 0 && j == 0) continue;
+                    var x = cell.x + i;
+                    var y = cell.y + j;
+
+                    if (x < 0 || y < 0) continue;
+                    if (x >= bsx || y >= bsy) continue;
+                    
+                    var index = y * bsx + x;
+                    var neighboor = b[index];
+                    if (allCellComps[neighboor].Alive) { count++; }
+                }
+            cell.count = count;
+
+        }).Run();
+
+        // this.Dependency = JobHandle.CombineDependencies(this.Dependency, exportPhysicsWorld.GetOutputDependency());   //run after this frames physics has been calculated
+        // this.Dependency = updateJob.ScheduleParallel(cellComponentQuery, 32, this.Dependency);   //how many cells to check at once, TODO find optimum number
 
 
         generation++;
@@ -107,11 +135,11 @@ public struct RayCastJob : IJobEntityBatch
         for (int index = 0; index < cellComponents.Length; index++)
         {
             int count = 0;
-            for (int i = -1; i <= 1; i++)
-                for (int j = -1; j <= 1; j++)
+            for (int j = -1; j <= 1; j++)
+                for (int i = -1; i <= 1; i++)
                 {
                     if (i == 0 && j == 0) continue;
-                    var start = new float3(cellComponents[index].x * 1.5f, cellComponents[index].y * 1.5f, 0f)+new float3(i,j, 0)*0.6f;
+                    var start = new float3(cellComponents[index].x * 1.5f, cellComponents[index].y * 1.5f, 0f) + new float3(i, j, 0) * 0.6f;
                     var end = start + new float3(i, j, 0) * 1f;
                     var hit = world.CastRay(new RaycastInput
                     {
@@ -131,3 +159,5 @@ public struct RayCastJob : IJobEntityBatch
         }
     }
 }
+
+

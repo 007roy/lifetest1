@@ -6,41 +6,36 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Rendering;
 using UnityEngine;
-using Unity.Physics;
 
-[InternalBufferCapacity(8)]
-public struct EntityRef : IBufferElementData
-{
-    public Entity entity;
-}
+[DisableAutoCreation]
 public class MasterSystem : SystemBase
 {
-    static public int BoardSizeX = 1000;
-    static public int BoardSizeY = 1000;
+    public static int BoardSizeX = 1000;
+    public static int BoardSizeY = 1000;
     private EntityManager entityManager;
-    //private CellComponent[,] Cells = new CellComponent[BoardSizeX,BoardSizeY];
-    static public NativeArray<Entity> neighboors;
-
+    public static NativeArray<CellComponent> neighbors;
     protected override void OnCreate()
     {
-        neighboors = new NativeArray<Entity>(BoardSizeX * BoardSizeY, Allocator.Persistent);
+        Unity.Mathematics.Random rnd = new Unity.Mathematics.Random(2112);
+        neighbors = new NativeArray<CellComponent>(BoardSizeX * BoardSizeY, Allocator.Persistent);
         entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
         EntityArchetype archetype = entityManager.CreateArchetype(
             typeof(Translation),
-            //typeof(Rotation),
             typeof(RenderMesh),
             typeof(RenderBounds),
             typeof(LocalToWorld),
             typeof(CellComponent),
-            typeof(PhysicsCollider));
+            typeof(EntityBufferElement));
+        
         Mesh cellMesh = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
         UnityEngine.Material cellMaterial = Resources.Load<UnityEngine.Material>("SomeColor");
-
+        
         for (int y = 0; y < BoardSizeY; y++)
             for (int x = 0; x < BoardSizeX; x++)
-            {
+            { 
+                
                 Entity newCell = entityManager.CreateEntity(archetype);
-                /// entityManager.AddComponentData(newCell, new Rotation { Value =  quaternion.EulerXYZ(new float3(0f,0f,0f))});
+                entityManager.AddBuffer<EntityBufferElement>(newCell);
                 entityManager.AddSharedComponentData(newCell, new RenderMesh
                 {
                     mesh = cellMesh,
@@ -50,61 +45,34 @@ public class MasterSystem : SystemBase
                 {
                     x = x,
                     y = y,
-                    Alive = false,
+                    alive = rnd.NextInt(100) > 50,
                     count = 0
                 };
-                SetNeighboors(new int2(x, y), newCell);
                 entityManager.AddComponentData(newCell, cellComponent);
-
-                BlobAssetReference<Unity.Physics.Collider> boxCollider = Unity.Physics.BoxCollider.Create(new BoxGeometry
-                {
-                    Center = cellMesh.bounds.center,
-                    BevelRadius = 0f,
-                    Orientation = quaternion.identity,
-                    Size = cellMesh.bounds.extents * 2.0f
-                });
-
-                entityManager.AddComponentData(newCell, new PhysicsCollider { Value = boxCollider });
-                /*
-                for (int j = -1; j <= 1; j++)
-                    for (int i = -1; i <= 1; i++)
-                    {
-                        if (i == 0 && j == 0) continue;
-                        if (x == 2 && y == 8)
-                        {
-                            var nx = x + i;
-                            var ny = y + j;
-                            Debug.Log("2,8 => (" + nx +","+ny+") => "  + ny * BoardSizeX + nx);
-                        }
-                    }
-                */
+                SetNeighbors(new int2(x, y), cellComponent);
             }
-
-
     }
 
     protected override void OnUpdate()
     {
         //Check all the cells for dead and move out of render range
         //TODO try pooling to bulk enable disable?
-        Entities.ForEach((ref Translation translation, in CellComponent cell) => {
-            if (cell.Alive)
-            {
-                translation.Value = new float3(cell.x * 1.5f, cell.y * 1.5f, 0f);
-                return;
-            }
-            translation.Value = new float3(-10000, -10000, -10000);
+        Entities.ForEach((ref Translation translation, in CellComponent cell) =>
+        {
+            translation.Value =
+                cell.alive ? new float3(cell.x * 1.5f, cell.y * 1.5f, 0f) :
+                    new float3(-10000, -10000, -10000);
         }).Schedule();
     }
-    private void SetNeighboors(int2 gridLoc,Entity entity)
+    private void SetNeighbors(int2 gridLoc,CellComponent cellComponent)
     {
         var index = gridLoc.y * BoardSizeX + gridLoc.x;
-        neighboors[index] = entity;
+        neighbors[index] = cellComponent;
     }
 
     protected override void OnDestroy()
     {
         base.OnDestroy();
-        neighboors.Dispose();
+        neighbors.Dispose();
     }
 }

@@ -10,52 +10,70 @@ using UnityEngine;
 using Unity.Physics.Systems;
 using TMPro;
 
+[DisableAutoCreation]
 public class LifeSystem : SystemBase
 {
-    
-    public int generation;
-    ExportPhysicsWorld exportPhysicsWorld;
 
+    public int generation;
     private EntityQuery cellComponentQuery;
+    private EntityQuery entityBufferQuery;
 
     protected override void OnCreate()
     {
         generation = 0;
-
-        exportPhysicsWorld = World.GetOrCreateSystem<ExportPhysicsWorld>();
+;
         var q = new EntityQueryDesc()
         {
-            All = new ComponentType[] { ComponentType.ReadWrite<CellComponent>() }
+            All = new[] { ComponentType.ReadWrite<CellComponent>() }
         };
-        cellComponentQuery = this.GetEntityQuery(q);
+    
     }
 
     protected override void OnStartRunning()
     {
-        //Make random selection alive
-        Unity.Mathematics.Random rnd = new Unity.Mathematics.Random(1211);
-        Entities.ForEach((ref CellComponent cell) =>
-        {
-            cell.Alive = rnd.NextInt(100) > 50;
-        }).WithoutBurst().Run();
     }
 
 
     protected override void OnUpdate()
     {
-        //setup and and start raycast neighboor check
-        ref PhysicsWorld pw = ref World.DefaultGameObjectInjectionWorld.GetExistingSystem<BuildPhysicsWorld>().PhysicsWorld;
-        var updateRayCastJob = new RayCastJob()
+        /*
+        var bsx = MasterSystem.BoardSizeX;
+        var bsy = MasterSystem.BoardSizeY;
+        EntityManager entityManager = EntityManager;
+        ComponentDataFromEntity<CellComponent> allCellComps = GetComponentDataFromEntity<CellComponent>(true);
+        var b = MasterSystem.neighboors;
+        Entities.WithReadOnly(allCellComps).WithReadOnly(b).ForEach((ref CellComponent cell) =>
         {
-            cellComponentHandle = this.GetComponentTypeHandle<CellComponent>(false),
-            world = pw
+            int count = 0;
+
+            for (int j = -1; j <= 1; j++)
+                for (int i = -1; i <= 1; i++)
+                {
+                    if (i == 0 && j == 0) continue;
+                    var x = cell.x + i;
+                    var y = cell.y + j;
+
+                    if (x < 0 || y < 0) continue;
+                    if (x >= bsx || y >= bsy) continue;
+                    
+                    var index = y * bsx + x;
+                    var neighboor = b[index];
+                    if (allCellComps[neighboor].alive) { count++; }
+                }
+            cell.count = count;
+
+        }).Run();
+*/
+        
+        //Count the neighbors
+        NeighborCountJob neighborCountJob = new NeighborCountJob()
+        {
+            CellComponentTypeHandle = GetComponentTypeHandle<CellComponent>(),
+            BufferTypeHandle = GetBufferTypeHandle<EntityBufferElement>()
         };
-        this.Dependency = JobHandle.CombineDependencies(this.Dependency, exportPhysicsWorld.GetOutputDependency());   //run after this frames physics has been calculated
-        this.Dependency = updateRayCastJob.ScheduleParallel(cellComponentQuery, 32, this.Dependency);   //how many cells to check at once, TODO find optimum number
+        Dependency = neighborCountJob.ScheduleParallel(entityBufferQuery, 1, Dependency);
+        
 
-
-        generation++;
-        GenerationDisplay.singleton.onCounterUpdate.Invoke(generation);
 
         if (generation < 2) return; //dont apply rules till after first 2 rounds TODO this is wonky figure out why
 
@@ -63,8 +81,11 @@ public class LifeSystem : SystemBase
         {
             cellComponentHandle = this.GetComponentTypeHandle<CellComponent>(false)
         };
-        applyRulesJob.ScheduleParallel(cellComponentQuery, 32, this.Dependency).Complete();
-
+        applyRulesJob.ScheduleParallel(cellComponentQuery, 32, this.Dependency);
+        CompleteDependency();
+        generation++;
+        GenerationDisplay.singleton.onCounterUpdate.Invoke(generation);
+        
     }
 
 
@@ -80,7 +101,7 @@ public struct ApplyRulesJob : IJobEntityBatch
         NativeArray<CellComponent> cellComponents = batchInChunk.GetNativeArray(cellComponentHandle);
         for (int index = 0; index < cellComponents.Length; index++)
         {
-            bool alive = cellComponents[index].Alive;
+            bool alive = cellComponents[index].alive;
             if (cellComponents[index].count < 2) alive = false;
             else if (cellComponents[index].count > 3) alive = false;
             else if (cellComponents[index].count == 3) alive = true;
@@ -88,46 +109,44 @@ public struct ApplyRulesJob : IJobEntityBatch
             {
                 x = cellComponents[index].x,
                 y = cellComponents[index].y,
-                Alive = alive,
+                alive = alive,
                 count = 0
             };
         }
     }
 }
 
-//Job that raycasts to count neighboors
-public struct RayCastJob : IJobEntityBatch
+public struct NeighborCountJob : IJobEntityBatch
 {
-    public ComponentTypeHandle<CellComponent> cellComponentHandle;
-    [ReadOnly] public PhysicsWorld world;
-    [BurstCompile]
+    public ComponentTypeHandle<CellComponent> CellComponentTypeHandle;
+    [ReadOnly]public BufferTypeHandle<EntityBufferElement> BufferTypeHandle;
+    [BurstCompatible]
     public void Execute(ArchetypeChunk batchInChunk, int batchIndex)
     {
-        NativeArray<CellComponent> cellComponents = batchInChunk.GetNativeArray(cellComponentHandle);
-        for (int index = 0; index < cellComponents.Length; index++)
+        var buffers = batchInChunk.GetBufferAccessor(BufferTypeHandle);
+        var cellComponents = batchInChunk.GetNativeArray(CellComponentTypeHandle);
+        for (int index = 0; index < batchInChunk.Count; index++)
         {
-            int count = 0;
-            for (int i = -1; i <= 1; i++)
-                for (int j = -1; j <= 1; j++)
-                {
-                    if (i == 0 && j == 0) continue;
-                    var start = new float3(cellComponents[index].x * 1.5f, cellComponents[index].y * 1.5f, 0f)+new float3(i,j, 0)*0.6f;
-                    var end = start + new float3(i, j, 0) * 1f;
-                    var hit = world.CastRay(new RaycastInput
-                    {
-                        Start = start,
-                        End = end,
-                        Filter = CollisionFilter.Default
-                    });
-                    if (hit) count++;
-                }
+            var count = 0;
+            var buffer = buffers[index];
+            foreach (var n in buffer)
+            {
+                //var neighboorAlive = 
+               // if (neighboorAlive) count++;
+            }
+
             cellComponents[index] = new CellComponent()
             {
                 x = cellComponents[index].x,
                 y = cellComponents[index].y,
-                Alive = cellComponents[index].Alive,
+                alive = cellComponents[index].alive,
                 count = count
             };
         }
+        
     }
 }
+
+
+
+

@@ -2,6 +2,7 @@ using System;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEngine.Serialization;
 
 
 [Serializable]
@@ -20,7 +21,7 @@ public struct CellComponent : IComponentData
     // * You should focus on the data structure that makes the most sense
     //   for runtime use here. Authoring Components will be used for 
     //   authoring the data in the Editor.
-    public bool Alive;
+    public bool alive;
     public int x;
     public int y;
     public int count;
